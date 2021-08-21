@@ -5,13 +5,21 @@ msft = yf.Ticker("MSFT")
 
 # get stock info
 for key in msft.info:
-    print('%s %s' % (key, msft.info[key]))
+    try:
+        int(msft.info[key])
+        print('%s %s' % (key, msft.info[key]))
+    except:
+        pass
 
 # get historical market data
 hist = msft.history(period="1mo")
-hist.plot()
-plt.show()
-print(dir(msft))
+#hist.plot()
+#plt.show()
+for item in dir(msft):
+    try:
+        print('%s %s' % (item, eval("msft.%s" % item)))
+    except:
+        pass
 
 # # show actions (dividends, splits)
 # print(msft.actions)

@@ -1,0 +1,92 @@
+{
+  "ntdoy":{
+    "avg_open": 62.83,
+    "invested": 305.9,
+    "units": 4.87
+  },
+  "amzn":{
+    "avg_open": 3441.69,
+    "invested": 100,
+    "units": 0.03
+  },
+  "mu":{
+    "avg_open": 75.8,
+    "invested": 150,
+    "units": 1.98
+  },
+  "crsr":{
+    "avg_open": 27.33,
+    "invested": 200,
+    "units": 7.32
+  },
+  "smsn.il":{
+    "avg_open": 1640.23,
+    "invested": 150,
+    "units": 0.09
+  },
+  "amat":{
+    "avg_open": 132.99,
+    "invested": 150,
+    "units": 1.13
+  },
+  "vale":{
+    "avg_open": 20.99,
+    "invested": 50,
+    "units": 2.38
+  },
+  "csiq":{
+    "avg_open": 35.9,
+    "invested": 50,
+    "units": 1.39
+  },
+  "sony":{
+    "avg_open": 100.52,
+    "invested": 50,
+    "units": 0.5
+  },
+  "spot":{
+    "avg_open": 211,
+    "invested": 50,
+    "units": 0.24
+  },
+  "pslv":{
+    "avg_open": 8.46,
+    "invested": 100,
+    "units": 11.82
+  },
+  "wdc":{
+    "avg_open": 61.99,
+    "invested": 50,
+    "units": 0.81
+  },
+  "gold":{
+    "avg_open": 20.09,
+    "invested": 50,
+    "units": 2.49
+  },
+  "tsm":{
+    "avg_open": 111.73,
+    "invested": 50,
+    "units": 0.45
+  },
+  "logn.sw":{
+    "avg_open": 98.96,
+    "invested": 50,
+    "units": 0.46
+  },
+  "cat":{
+    "avg_open": 205,
+    "invested": 50,
+    "units": 0.24
+  },
+  "hmc":{
+    "avg_open": 29.87,
+    "invested": 50,
+    "units": 1.67
+  },
+  "nvda":{
+    "avg_open": 192,
+    "invested": 50,
+    "units": 0.26
+  }
+}
