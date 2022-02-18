@@ -1,10 +1,18 @@
+import datetime
 import os
 import matplotlib.pyplot as plt
 
 stock_nums = {}
+time_format = '%Y.%m.%d_%H.%M.%S'
+date_to_get = datetime.datetime.strptime('2022.02.19_00.00.00', time_format)
+
 
 for symbol in os.listdir('info'):
     for date in os.listdir(os.path.join('info', symbol)):
+        fdate = datetime.datetime.strptime(date, time_format)
+        if fdate.date() != date_to_get.date():
+            print('%s not %s date' % (date, date_to_get))
+            continue
         for filename in os.listdir(os.path.join('info', symbol, date)):
             if filename == 'nums':
                 stock_nums[symbol] = {}
@@ -21,28 +29,37 @@ for symbol in os.listdir('info'):
                                 pass
 print(len(stock_nums))
 
+pe_syms = dict()
 for sym in stock_nums:
-    if 'trailingPE' not in stock_nums[sym]:
-        continue
-    price = float(stock_nums[sym]['currentPrice'])
-    pe = float(stock_nums[sym]['trailingPE'])
-    closing_price = float(stock_nums[sym]['previousClose'])
-    if 'shortPercentOfFloat' in stock_nums[sym]:
-        short_ratio = float(stock_nums[sym]['shortPercentOfFloat'])
-    else:
-        short_ratio = 0
-    current_pe = (price * pe) / closing_price
-    print('%s %s %s %s %s' % (sym, pe, current_pe, current_pe - pe, short_ratio), end='')
-    if abs(current_pe - pe) > 2:
-        print(' < ', end='')
-    else:
-        print(' ', end='')
-    if short_ratio > 0.05 and short_ratio < 0.1:
-        print('SHORTED')
-    elif short_ratio > 0.1:
-        print('HEAVILY SHORTED')
-    else:
-        print()
+    try:
+        if 'trailingPE' not in stock_nums[sym]:
+            continue
+        price = float(stock_nums[sym]['currentPrice'])
+        pe = float(stock_nums[sym]['trailingPE'])
+        closing_price = float(stock_nums[sym]['previousClose'])
+        if 'shortPercentOfFloat' in stock_nums[sym]:
+            short_ratio = float(stock_nums[sym]['shortPercentOfFloat'])
+        else:
+            short_ratio = 0
+        current_pe = (price * pe) / closing_price
+        pe_syms[current_pe]=sym
+        pe_diff_percentage = (abs(current_pe - pe)*100/pe)
+        print('%s pe=%6.4f cpe=%6.4f pe_diff=%3.1f%% %6.4f' % (sym, pe, current_pe, pe_diff_percentage, short_ratio), end='')
+        if pe_diff_percentage > 20:
+            print(' < ', end='')
+        else:
+            print(' ', end='')
+        if short_ratio > 0.05 and short_ratio < 0.1:
+            print('SHORTED')
+        elif short_ratio > 0.1:
+            print('HEAVILY SHORTED %3.1f%%' % (short_ratio * 100))
+        else:
+            print()
+    except Exception as ex:
+        print('%s %s' % (sym, ex))
+
+for pe in sorted(list(pe_syms.keys())):
+    print('%s %4.2f' % (pe_syms[pe], pe))
 
 #print(stock_nums)
 # syms = []
