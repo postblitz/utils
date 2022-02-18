@@ -59,10 +59,12 @@ def has_todays_data(symbol):
 
 with open("stock_names.txt", 'r') as f:
     content = f.read()
-    symbols = ','.join(content.split('\n')).strip(',').split(',')
+    symbols=' '.join(content.split(',')).split()
     print('loaded %s symbols:%s' % (len(symbols), symbols))
     for symbol in symbols:
         symbol = symbol.strip()
+        if len(symbol) == 0:
+            continue
         if not has_todays_data(symbol):
             print('grabbing %s' % symbol)
             ticker = yf.Ticker(symbol)
