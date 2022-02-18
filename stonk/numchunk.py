@@ -3,20 +3,23 @@ import matplotlib.pyplot as plt
 
 stock_nums = {}
 
-for filename in os.listdir('info'):
-    if filename.endswith('numeric_info'):
-        symbol = filename.split('.')[0]
-        stock_nums[symbol] = {}
-        with open('info\\' + filename, 'r') as f:
-            whole_file = f.read()
-            for item in whole_file.split('\n'):
-                try:
-                    key, value = item.split()
-                    stock_nums[symbol][key] = value
-                except ValueError as ex:
-                    if len(item.split()) == 0:
-                        pass
-
+for symbol in os.listdir('info'):
+    for date in os.listdir(os.path.join('info', symbol)):
+        for filename in os.listdir(os.path.join('info', symbol, date)):
+            if filename == 'nums':
+                stock_nums[symbol] = {}
+                path = os.path.join('info', symbol, date, filename)
+                print(path)
+                with open(path, 'r') as f:
+                    whole_file = f.read()
+                    for item in whole_file.split('\n'):
+                        try:
+                            key, value = item.split()
+                            stock_nums[symbol][key] = value
+                        except ValueError as ex:
+                            if len(item.split()) == 0:
+                                pass
+print(len(stock_nums))
 
 for sym in stock_nums:
     if 'trailingPE' not in stock_nums[sym]:

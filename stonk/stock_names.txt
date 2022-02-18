@@ -1,0 +1,4 @@
+aapl, amzn, msft, crox, crsr, vti, gld, wdc, nvda, intc, mmm, pslv, csiq, sony, bio, vale, smh, vxus, voo, ewj, adbe, amat, gld, gt, duol, vgk, intc, awk, twtr, nflx, ntdoy, logn.zu, smsn.l
+psx, enb, x, ter, ups, u, cat, awk, adsk, estc, abnb, bkng, shop, tmv.de, mdb, dbx, adbe, now, snow, xm, nio, tsla, bmw.de, mbg.de, vow3.de, hmc, tm, f, ewj, hmc, tm, mfg, mufg, tan,
+fslr, sedg, csiq, qcom, asml, asml.nv, amat, smsn.l, nvda, amd, intc, smh, tsm, amzn, tsla, aapl, msft, googl, goog, sfm, baba, cpng, meli, m, tgt, tsco.l, amzn, stx, dell, mu, wdc, logi, ea, duol,
+u, sony, ntdoy, ttwo, twtr, nflx, atvi, dis, mcd, tsn, xrx, swbi, bmy, pfe, bio, jnj, mrk

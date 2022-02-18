@@ -1,3 +1,4 @@
+import shutil
 import os
 import pathlib
 import yfinance as yf
@@ -8,7 +9,7 @@ time_format = '%Y.%m.%d_%H.%M.%S'
 now = datetime.datetime.now()
 now_s = now.strftime(time_format)
 
-def set_nums(ticker, symbol):
+def set_nums(ticker: yf.Ticker, symbol:str):
     with open(r'info\%s\%s\nums' % (symbol, now_s), 'w') as numeric_file:
         for key in ticker.info:
             try:
@@ -17,7 +18,7 @@ def set_nums(ticker, symbol):
             except Exception as ex:
                 pass
 
-def set_ticker(ticker, symbol):
+def set_ticker(ticker: yf.Ticker, symbol:str):
     with open(r'info\%s\%s\ticker' % (symbol, now_s), 'w') as ticker_file:
         for item in dir(ticker):
             try:
@@ -39,20 +40,35 @@ def set_history(ticker: yf.Ticker, symbol:str):
 def has_todays_data(symbol):
     found = False
     if os.path.isdir('info\%s' % symbol):
-        for time_fname in os.listdir('info\%s' % symbol):
-            fdate = datetime.datetime.strptime(time_fname, time_format)
+        print(symbol)
+        dates = os.listdir('info\%s' % symbol)
+        print(dates)
+        for time_fname in dates:
+            try:
+                fdate = datetime.datetime.strptime(time_fname, time_format)
+            except ValueError:
+                path = 'info\%s\%s' % (symbol, time_fname)
+                print('deleting %s' % path)
+                shutil.rmtree(path)
+                continue
             if fdate.date() == now.date():
                 print('skipped %s has today\'s data' % symbol)
                 found = True
                 break
     return found
 
-with open("portfolio.json", 'r') as f:
-    folio = json.load(f)
-    for symbol in folio.keys():
+with open("stock_names.txt", 'r') as f:
+    content = f.read()
+    symbols = ','.join(content.split('\n')).strip(',').split(',')
+    print('loaded %s symbols:%s' % (len(symbols), symbols))
+    for symbol in symbols:
+        symbol = symbol.strip()
         if not has_todays_data(symbol):
+            print('grabbing %s' % symbol)
             ticker = yf.Ticker(symbol)
             pathlib.Path('info\%s\%s' % (symbol,now_s)).mkdir(parents=True, exist_ok=True)
             set_nums(ticker, symbol)
             set_ticker(ticker, symbol)
             set_history(ticker, symbol)
+        else:
+            print('already have data for %s for today %s' % (symbol, now_s))

@@ -1,25 +1,28 @@
 import yfinance as yf
 import matplotlib.pyplot as plt
 
-msft = yf.Ticker("MSFT")
 
+test_file = 'D:\code\utils\stonk\info\ amzn\2022.02.18_23.16.44\1d.price'
+with open(test_file, 'r') as f:
+    test = f.read()
+print(test)
 # get stock info
-for key in msft.info:
-    try:
-        int(msft.info[key])
-        print('%s %s' % (key, msft.info[key]))
-    except:
-        pass
+#for key in msft.info:
+    #try:
+    #    int(msft.info[key])
+    #    print('%s %s' % (key, msft.info[key]))
+    #except:
+#        pass
 
 # get historical market data
-hist = msft.history(period="1mo")
+#hist = msft.history(period="1mo")
 #hist.plot()
 #plt.show()
-for item in dir(msft):
-    try:
-        print('%s %s' % (item, eval("msft.%s" % item)))
-    except:
-        pass
+#for item in dir(msft):
+    #try:
+    #    print('%s %s' % (item, eval("msft.%s" % item)))
+    #except:
+#        pass
 
 # # show actions (dividends, splits)
 # print(msft.actions)
