@@ -2,6 +2,7 @@ import os
 import json
 import string
 import math
+import numpy as np
 from collections import defaultdict
 from datetime import datetime
 
@@ -33,15 +34,16 @@ def get_log_time_cluster(days_old):
 
 def analyze_hierarchy(contents, current_depth, path_prefix, stats, now):
     """
-    Recursively processes the JSON structure, fixes the mathematical size bubble-up,
-    and accurately preserves the access-denied tracking tree.
+    Recursively processes the tree to gather fine-grained topology metrics,
+    counting absolute cumulative nested structures down the tree lines.
     """
     exclusive_files_size = 0
-    total_subfolders_size = 0
+    total_folders_underneath = 0
+    max_depth_underneath = 0
     denied_tree = []
 
     if not isinstance(contents, list):
-        return 0, "ACCESS_DENIED"
+        return 0, 0, 0, "ACCESS_DENIED"
 
     for item in contents:
         if not isinstance(item, dict):
@@ -50,30 +52,17 @@ def analyze_hierarchy(contents, current_depth, path_prefix, stats, now):
         for name, value in item.items():
             # Scenario A: It's a folder
             if isinstance(value, list):
-                target_depth = current_depth
-                
-                # Apply the WinSxS flattening optimization
-                if path_prefix == "Windows/WinSxS" and "_" in name:
-                    prefix_part, rest_part = name.split("_", 1)
-                    virtual_prefix = f"Windows/WinSxS/{prefix_part}"
-                    target_depth = current_depth + 1
-                    new_prefix = f"{virtual_prefix}/{rest_part}" if target_depth <= 3 else virtual_prefix
-                else:
-                    if current_depth <= 3:
-                        new_prefix = f"{path_prefix}/{name}" if path_prefix else name
-                    else:
-                        new_prefix = path_prefix
+                stats["levels"][current_depth]["folders"] += 1
+                new_prefix = f"{path_prefix}/{name}" if path_prefix else name
 
-                # Recurse down and capture the absolute total size of this child folder
-                sub_total_size, sub_denied = analyze_hierarchy(value, current_depth + 1, new_prefix, stats, now)
-                total_subfolders_size += sub_total_size
+                # Recurse down
+                sub_size, sub_folders, sub_depth, sub_denied = analyze_hierarchy(
+                    value, current_depth + 1, new_prefix, stats, now
+                )
                 
-                # Attribute the sizes safely to the reporting buckets up to level 3
-                if path_prefix == "Windows/WinSxS" and "_" in name:
-                    virtual_prefix = f"Windows/WinSxS/{name.split('_', 1)[0]}"
-                    stats["folder_sizes"][virtual_prefix] += sub_total_size
-                elif current_depth <= 3 and new_prefix:
-                    stats["folder_sizes"][new_prefix] += sub_total_size
+                # Accumulate the geometric properties
+                total_folders_underneath += 1 + sub_folders
+                max_depth_underneath = max(max_depth_underneath, 1 + sub_depth)
                 
                 if sub_denied:
                     denied_tree.append({name: sub_denied})
@@ -82,18 +71,21 @@ def analyze_hierarchy(contents, current_depth, path_prefix, stats, now):
             elif value == "ACCESS_DENIED":
                 denied_tree.append({name: "ACCESS_DENIED"})
 
-            # Scenario C: It's a file with metadata
+            # Scenario C: It's a file
             elif isinstance(value, dict) and "size_bytes" in value:
                 file_size = value["size_bytes"]
                 exclusive_files_size += file_size
                 
-                # 1. Track Extensions
+                stats["levels"][current_depth]["files"] += 1
+                stats["levels"][current_depth]["total_size_bytes"] += file_size
+                
+                # Track Extensions
                 _, ext = os.path.splitext(name.lower())
                 ext_key = ext or "no_extension"
                 stats["extensions"][ext_key]["size"] += file_size
                 stats["extensions"][ext_key]["count"] += 1
                 
-                # 2. Track Modification Time Clusters
+                # Track Modification Time Clusters
                 mod_time = parse_iso_time(value.get("modification_time"))
                 if mod_time:
                     days_old = (now - mod_time).total_seconds() / 86400.0
@@ -101,13 +93,12 @@ def analyze_hierarchy(contents, current_depth, path_prefix, stats, now):
                         days_old = 0 
                     stats["time_clusters"][get_log_time_cluster(days_old)] += 1
 
-    # Add this folder's immediate flat files to its own level 3 bucket summary
-    if current_depth <= 3 and path_prefix:
-        stats["folder_sizes"][path_prefix] += exclusive_files_size
+    # Store the raw total structural volume count for this directory path node
+    if total_folders_underneath > 0 and path_prefix:
+        stats["raw_folder_counts"][path_prefix] = total_folders_underneath
 
-    # FIX: Return the absolute combined sum up the recursive stack
-    true_total_folder_size = exclusive_files_size + total_subfolders_size
-    return true_total_folder_size, (denied_tree if denied_tree else None)
+    stats["levels"][current_depth]["total_size_bytes"] += exclusive_files_size
+    return (exclusive_files_size), total_folders_underneath, max_depth_underneath, (denied_tree if denied_tree else None)
 
 def main():
     file_path = input("Enter the path of the drive JSON file to analyze (e.g., drive_c.json): ").strip()
@@ -122,23 +113,72 @@ def main():
     stats = {
         "extensions": defaultdict(lambda: {"size": 0, "count": 0}),
         "time_clusters": defaultdict(int),
-        "folder_sizes": defaultdict(int)
+        "raw_folder_counts": {},
+        "levels": defaultdict(lambda: {"folders": 0, "files": 0, "total_size_bytes": 0})
     }
     
     final_denied_tree = {}
     
     for drive_letter, root_contents in data.items():
-        # Initialize drive base container size tracking
-        stats["folder_sizes"][drive_letter] = 0
-        drive_total, drive_denied_structure = analyze_hierarchy(root_contents, current_depth=1, path_prefix="", stats=stats, now=now)
-        stats["folder_sizes"][drive_letter] = drive_total
+        stats["levels"][1]["folders"] += 1
+        _, _, _, drive_denied_structure = analyze_hierarchy(root_contents, current_depth=1, path_prefix="", stats=stats, now=now)
         final_denied_tree[drive_letter] = drive_denied_structure if drive_denied_structure else []
 
-    # Sorting
-    sorted_extensions = dict(sorted(stats["extensions"].items(), key=lambda x: x[1]["size"], reverse=True))
-    final_extensions_tuple = {ext: [d["size"], d["count"]] for ext, d in sorted_extensions.items()}
-    sorted_folders = dict(sorted(stats["folder_sizes"].items(), key=lambda x: x[1], reverse=True))
+    # ==========================================
+    # SECTION 1: String Formatted Ratios
+    # ==========================================
+    formatted_extensions = {}
+    sorted_raw_ext = sorted(stats["extensions"].items(), key=lambda x: x[1]["size"], reverse=True)
     
+    for ext, payload in sorted_raw_ext:
+        size = payload["size"]
+        count = payload["count"]
+        ratio = size / count if count > 0 else 0.0
+        formatted_extensions[ext] = f"{size} bytes / {count} files = {ratio:6.4f} bytes/file"
+
+    # ==========================================
+    # SECTION 3: Statistical Filtering & Branch Lineage Pruning
+    # ==========================================
+    filtered_branching = {}
+    if stats["raw_folder_counts"]:
+        counts_array = list(stats["raw_folder_counts"].values())
+        mean_val = np.mean(counts_array)
+        std_val = np.std(counts_array)
+        
+        dynamic_threshold = mean_val + (1.5 * std_val)
+        print(f"Calculated Folder Count Stats -> Average: {mean_val:.2f}, Cutoff Threshold: {dynamic_threshold:.2f}")
+        
+        # Initial pass: get everything that qualifies above the outlier bar
+        qualified_paths = {path: count for path, count in stats["raw_folder_counts"].items() if count >= dynamic_threshold}
+        
+        # Lineage Pruning: Remove ancestral conduits to isolate the deep specific root of the thicket
+        pruned_paths = {}
+        for path, count in qualified_paths.items():
+            # Check if this folder has a subfolder that is ALSO in our qualified list
+            has_heavy_subfolder = False
+            for other_path in qualified_paths.keys():
+                if other_path.startswith(path + "/"):
+                    # If a subfolder accounts for almost the entire volume (e.g., within 100 subfolders difference), 
+                    # it means this current folder path is just a redundant parent conduit line.
+                    if qualified_paths[other_path] >= (count - 100):
+                        has_heavy_subfolder = True
+                        break
+            
+            if not has_heavy_subfolder:
+                pruned_paths[path] = f"{count} nested subfolders"
+                
+        sorted_branching = dict(sorted(pruned_paths.items(), key=lambda x: int(x[1].split()[0]), reverse=True))
+    else:
+        sorted_branching = {}
+
+    # ==========================================
+    # SECTION 5: Generational Mapping
+    # ==========================================
+    formatted_levels = {}
+    for level_idx in sorted(stats["levels"].keys()):
+        formatted_levels[f"level_{level_idx}"] = dict(stats["levels"][level_idx])
+
+    # Sort Time Clusters
     def cluster_sort_key(item):
         label = item[0]
         if "0 to 1" in label: return 0
@@ -152,19 +192,20 @@ def main():
             
     sorted_time_clusters = dict(sorted(stats["time_clusters"].items(), key=cluster_sort_key))
 
-    # Save outputs
+    # Assemble output object
     output_filename = f"analytics_{os.path.basename(file_path)}"
     final_output = {
-        "1_extension_totals_[bytes, count]": final_extensions_tuple,
+        "1_extension_analytics": formatted_extensions,
         "2_time_clusters_file_counts": sorted_time_clusters,
-        "3_top_level_folder_sizes_bytes": sorted_folders,
-        "4_access_denied_hierarchy": final_denied_tree
+        "3_heaviest_branching_directories_volume": sorted_branching,
+        "4_access_denied_hierarchy": final_denied_tree,
+        "5_generational_level_topology": formatted_levels
     }
     
     with open(output_filename, 'w', encoding='utf-8') as f:
         json.dump(final_output, f, indent=4)
         
-    print(f"\nAnalysis complete! Cleaned results written to: {output_filename}")
+    print(f"\nAnalysis complete! Topological output written to: {output_filename}")
 
 if __name__ == "__main__":
     main()
